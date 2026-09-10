@@ -1,0 +1,20 @@
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.so
+*.dylib
+
+# Py2app
+*.app
+
+# Data (keep in local, not on GitHub)
+data/
+*.json
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
