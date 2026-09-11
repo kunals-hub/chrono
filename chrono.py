@@ -394,13 +394,21 @@ class ChronoApp(rumps.App):
     def stop_session(self, _):
         self.running = False
         if self.session_start_time is not None:
+            end_time = datetime.now()
             if self.current_mode == "0 - ∞":
                 duration = self.elapsed_infinite
             else:
                 duration = self.mode_total_seconds - self.remaining
             
             if duration >= 5:
-                self._save_session()
+                save_session({
+                    "date": date.today().isoformat(),
+                    "mode": self.current_mode,
+                    "start_time": self.session_start_time.strftime("%H:%M:%S"),
+                    "end_time": end_time.strftime("%H:%M:%S"),
+                    "duration": duration,
+                    "duration_formatted": fmt(duration),
+                })
                 rumps.notification("Chrono", "🍅 Session saved!", f"{fmt(duration)} of focus time recorded.")
         
         # Reset to mode default

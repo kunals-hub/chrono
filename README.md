@@ -5,7 +5,7 @@ A lightweight, native macOS menu bar timer with zero Dock/cmd+tab clutter.
 - **25 min 🍅** — Classic focus block
 - **50 min 🍅🍅** — Long focus block
 - **⏱ Custom** — Any minutes you want (30, 45, 90, whatever)
-- **∞ Infinite** — Stopwatch mode (counts up)
+- **0 - ∞** — Stopwatch mode (counts up)
 - **Dashboard** — Weekly stats, mode breakdown, recent sessions
 
 ## Why This Exists
@@ -86,6 +86,19 @@ Or just type `chrono` — defaults to `start`.
 | **0 - ∞** | Switch to infinite stopwatch |
 | **📊 Dashboard** | Open stats in browser |
 | **Quit** | Save and exit |
+
+### How Sessions Are Saved
+
+Click **⏹ Stop Session** or **Quit** to save your focus time. Sessions shorter than 5 seconds are discarded.
+
+| Mode | What gets recorded |
+|---|---|
+| **0 - ∞** | Total elapsed time (stopwatch — counts up) |
+| **25 min** | `25:00 - remaining` = actual focused time |
+| **50 min** | `50:00 - remaining` = actual focused time |
+| **⏱ Custom** | `Custom total - remaining` = actual focused time |
+
+A macOS notification confirms each saved session with its duration.
 
 ### Start at Login
 
