@@ -78,11 +78,12 @@ Or just type `chrono` — defaults to `start`.
 |---|---|
 | **▶ Start** | Begin timer (auto-starts in ∞ mode) |
 | **⏸ Pause** | Pause current session |
-| **↺ Reset** | Reset and save session |
+| **⏹ Stop Session** | End session, save focus time to dashboard |
+| **↺ Reset** | Reset to mode default without saving |
 | **🍅 25 min** | Switch to 25-min block |
 | **🍅🍅 50 min** | Switch to 50-min block |
 | **⏱ Custom...** | Enter any minutes (30, 45, 60, 90...) |
-| **∞ Infinite** | Switch to infinite stopwatch |
+| **0 - ∞** | Switch to infinite stopwatch |
 | **📊 Dashboard** | Open stats in browser |
 | **Quit** | Save and exit |
 

@@ -316,6 +316,7 @@ class ChronoApp(rumps.App):
         self.menu = [
             rumps.MenuItem("▶ Start", callback=self.start_timer),
             rumps.MenuItem("⏸ Pause", callback=self.pause_timer),
+            rumps.MenuItem("⏹ Stop Session", callback=self.stop_session),
             rumps.MenuItem("↺ Reset", callback=self.reset_timer),
             None,
             rumps.MenuItem("🍅 25 min", callback=lambda _: self.set_mode("25 min 🍅", 25 * 60)),
@@ -388,6 +389,26 @@ class ChronoApp(rumps.App):
 
     def pause_timer(self, _):
         self.running = False
+        self._update_title()
+
+    def stop_session(self, _):
+        self.running = False
+        if self.session_start_time is not None:
+            if self.current_mode == "0 - ∞":
+                duration = self.elapsed_infinite
+            else:
+                duration = self.mode_total_seconds - self.remaining
+            
+            if duration >= 5:
+                self._save_session()
+                rumps.notification("Chrono", "🍅 Session saved!", f"{fmt(duration)} of focus time recorded.")
+        
+        # Reset to mode default
+        if self.current_mode == "0 - ∞":
+            self.elapsed_infinite = 0
+        else:
+            self.remaining = self.mode_total_seconds
+        self.session_start_time = None
         self._update_title()
 
     def reset_timer(self, _):
