@@ -20,10 +20,66 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 
 # --- Config ---
-DATA_DIR = Path(__file__).parent / "data"
+def _resolve_data_dir() -> Path:
+    """User data lives OUTSIDE the .app bundle so rebuilds never wipe it.
+    macOS convention: ~/Library/Application Support/Chrono.
+    CHRONO_DATA_DIR env overrides (used by tests)."""
+    override = os.environ.get("CHRONO_DATA_DIR")
+    if override:
+        d = Path(override).expanduser()
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+    d = Path.home() / "Library" / "Application Support" / "Chrono"
+    d.mkdir(parents=True, exist_ok=True)
+    _migrate_legacy_data(d)
+    return d
+
+
+def _migrate_legacy_data(dest: Path):
+    """One-time move from pre-fix locations (inside .app bundles / repo dir).
+    Only copies files the destination doesn't already have — never overwrites."""
+    candidates = [
+        Path(__file__).parent / "data",  # running from source, or old bundle layout
+    ]
+    dist = Path(__file__).parent.parent.parent  # Chrono.app/Contents/Resources -> dist/
+    if dist.name == "dist":
+        for app in ("Chrono.app", "Kairos.app"):
+            candidates.append(dist / app / "Contents" / "Resources" / "data")
+    else:
+        here = Path(__file__).parent
+        candidates.append(here / "dist" / "Chrono.app" / "Contents" / "Resources" / "data")
+        candidates.append(here / "dist" / "Kairos.app" / "Contents" / "Resources" / "data")
+    for src in candidates:
+        if not src.exists() or src.resolve() == dest.resolve():
+            continue
+        for name in ("sessions.json", "summaries.json"):
+            s, t = src / name, dest / name
+            if s.is_file() and not t.exists():
+                try:
+                    t.write_bytes(s.read_bytes())
+                except OSError:
+                    pass
+        src_arch, dest_arch = src / "archive", dest / "archive"
+        if src_arch.is_dir():
+            dest_arch.mkdir(exist_ok=True)
+            for f in src_arch.glob("*.json"):
+                t = dest_arch / f.name
+                if not t.exists():
+                    try:
+                        t.write_bytes(f.read_bytes())
+                    except OSError:
+                        pass
+
+
+DATA_DIR = _resolve_data_dir()
 SESSIONS_FILE = DATA_DIR / "sessions.json"
+ARCHIVE_DIR = DATA_DIR / "archive"
+SUMMARIES_FILE = DATA_DIR / "summaries.json"
 DASHBOARD_PORT = 8765
 LOCK_FILE = Path("/tmp/chrono.lock")
+# Raw session detail kept locally; older months auto-archived.
+# Summaries always cover all-time so old data is never lost.
+ARCHIVE_AFTER_DAYS = 90
 
 MODES = {
     "25 min 🍅": 25 * 60,
@@ -70,11 +126,113 @@ def release_lock(fd):
 
 
 # ─── Data helpers ───────────────────────────────────────────────
+# Storage tiers (Forest-style, all local & permanent):
+#   data/sessions.json    — raw detail, last ~90 days
+#   data/archive/YYYY-MM.json — raw detail for older months (never deleted)
+#   data/summaries.json   — daily / weekly / monthly rollups, all-time
 def load_sessions() -> list:
+    """Recent raw sessions (hot file)."""
     if SESSIONS_FILE.exists():
-        with open(SESSIONS_FILE, "r") as f:
-            return json.load(f)
+        try:
+            with open(SESSIONS_FILE, "r") as f:
+                data = json.load(f)
+                return data if isinstance(data, list) else []
+        except (json.JSONDecodeError, OSError):
+            return []
     return []
+
+
+def load_all_sessions() -> list:
+    """Recent + every archived month. Source for dashboard totals."""
+    all_s = load_sessions()
+    if ARCHIVE_DIR.exists():
+        for f in sorted(ARCHIVE_DIR.glob("*.json")):
+            try:
+                with open(f, "r") as fh:
+                    data = json.load(fh)
+                    if isinstance(data, list):
+                        all_s.extend(data)
+            except (json.JSONDecodeError, OSError):
+                continue
+    return all_s
+
+
+def _week_key(d: date) -> str:
+    iso = d.isocalendar()
+    return f"{iso.year}-W{iso.week:02d}"
+
+
+def build_summaries(sessions: list) -> dict:
+    daily: dict = {}
+    weekly: dict = {}
+    monthly: dict = {}
+    for s in sessions:
+        try:
+            dur = int(s.get("duration", 0))
+            d = date.fromisoformat(s["date"])
+        except (ValueError, KeyError, TypeError, AttributeError):
+            continue
+        dk = d.isoformat()
+        wk = _week_key(d)
+        mk = d.strftime("%Y-%m")
+        for store, key in ((daily, dk), (weekly, wk), (monthly, mk)):
+            entry = store.setdefault(key, {"total": 0, "sessions": 0})
+            entry["total"] += dur
+            entry["sessions"] += 1
+    return {"daily": daily, "weekly": weekly, "monthly": monthly}
+
+
+def run_maintenance() -> dict:
+    """Archive sessions older than ARCHIVE_AFTER_DAYS into archive/YYYY-MM.json
+    and rebuild summaries.json. Old daily detail is compacted into monthly
+    files — totals are never lost."""
+    DATA_DIR.mkdir(exist_ok=True)
+    ARCHIVE_DIR.mkdir(exist_ok=True)
+    sessions = load_sessions()
+    if not sessions:
+        # Still ensure summaries exist from archives
+        existing = load_all_sessions()
+        summaries = build_summaries(existing)
+        with open(SUMMARIES_FILE, "w") as f:
+            json.dump(summaries, f, indent=2)
+        return summaries
+
+    cutoff = date.today() - timedelta(days=ARCHIVE_AFTER_DAYS)
+    keep: list = []
+    old_by_month: dict = {}
+    for s in sessions:
+        try:
+            d = date.fromisoformat(s.get("date", ""))
+        except ValueError:
+            keep.append(s)
+            continue
+        if d < cutoff:
+            old_by_month.setdefault(d.strftime("%Y-%m"), []).append(s)
+        else:
+            keep.append(s)
+
+    for month, items in old_by_month.items():
+        dest = ARCHIVE_DIR / f"{month}.json"
+        merged = list(items)
+        if dest.exists():
+            try:
+                with open(dest, "r") as fh:
+                    prior = json.load(fh)
+                    if isinstance(prior, list):
+                        merged = prior + items
+            except (json.JSONDecodeError, OSError):
+                pass
+        with open(dest, "w") as fh:
+            json.dump(merged, fh, indent=2)
+
+    if old_by_month:
+        with open(SESSIONS_FILE, "w") as f:
+            json.dump(keep, f, indent=2)
+
+    summaries = build_summaries(load_all_sessions())
+    with open(SUMMARIES_FILE, "w") as f:
+        json.dump(summaries, f, indent=2)
+    return summaries
 
 
 def save_session(session_data: dict):
@@ -83,6 +241,11 @@ def save_session(session_data: dict):
     sessions.append(session_data)
     with open(SESSIONS_FILE, "w") as f:
         json.dump(sessions, f, indent=2)
+    # Keep tiers tidy on every save (cheap at this scale)
+    try:
+        run_maintenance()
+    except Exception:
+        pass
 
 
 def fmt(seconds: int) -> str:
@@ -97,17 +260,20 @@ def fmt(seconds: int) -> str:
 
 
 # ─── Dashboard server ──────────────────────────────────────────
-def _dashboard_handler(sessions: list):
-    """Build an HTTP request handler class bound to the given sessions list."""
+def _dashboard_handler():
+    """Build an HTTP request handler that loads fresh data per request
+    (recent + archive), so the dashboard never shows stale totals."""
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
             if self.path in ("/", "/index.html"):
+                sessions = load_all_sessions()
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(_render_dashboard(sessions).encode())
             elif self.path == "/api/sessions":
+                sessions = load_all_sessions()
                 self.send_response(200)
                 self.send_header("Content-type", "application/json")
                 self.end_headers()
@@ -130,8 +296,7 @@ class DashboardServer:
     def start(self):
         if self.server:
             return
-        sessions = load_sessions()
-        handler = _dashboard_handler(sessions)
+        handler = _dashboard_handler()
         self.server = HTTPServer(("127.0.0.1", DASHBOARD_PORT), handler)
         self._thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self._thread.start()
@@ -151,9 +316,30 @@ def _render_dashboard(sessions: list) -> str:
     today_str = today.isoformat()
 
     # Today's sessions
-    today_sessions = [s for s in sessions if s["date"] == today_str]
-    today_total = sum(s["duration"] for s in today_sessions)
+    today_sessions = [s for s in sessions if s.get("date") == today_str]
+    today_total = sum(int(s.get("duration", 0)) for s in today_sessions)
     today_count = len(today_sessions)
+
+    # This week (Mon–Sun) + this month + all-time
+    week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=6)
+    month_prefix = today.strftime("%Y-%m")
+    week_total = 0
+    week_count = 0
+    month_total = 0
+    month_count = 0
+    for s in sessions:
+        try:
+            d = date.fromisoformat(s.get("date", ""))
+            dur = int(s.get("duration", 0))
+        except (ValueError, TypeError):
+            continue
+        if week_start <= d <= week_end:
+            week_total += dur
+            week_count += 1
+        if d.strftime("%Y-%m") == month_prefix:
+            month_total += dur
+            month_count += 1
 
     # Last 7 days
     week_bars = []
@@ -161,15 +347,28 @@ def _render_dashboard(sessions: list) -> str:
     for i in range(7):
         d = today - timedelta(days=6 - i)
         d_str = d.isoformat()
-        d_total = sum(s["duration"] for s in sessions if s["date"] == d_str)
+        d_total = sum(int(s.get("duration", 0)) for s in sessions if s.get("date") == d_str)
         max_day = max(max_day, d_total)
         week_bars.append({"date": d_str, "label": d.strftime("%a"), "total": d_total})
+
+    # Last 6 months
+    month_bars = []
+    max_month = 1
+    for i in range(5, -1, -1):
+        y, m = today.year, today.month - i
+        while m <= 0:
+            m += 12
+            y -= 1
+        mk = f"{y}-{m:02d}"
+        m_total = sum(int(s.get("duration", 0)) for s in sessions if s.get("date", "")[:7] == mk)
+        max_month = max(max_month, m_total)
+        month_bars.append({"key": mk, "label": date(y, m, 1).strftime("%b"), "total": m_total})
 
     # Mode totals
     mode_totals = {}
     for s in sessions:
-        m = s["mode"]
-        mode_totals[m] = mode_totals.get(m, 0) + s["duration"]
+        m = s.get("mode", "?")
+        mode_totals[m] = mode_totals.get(m, 0) + int(s.get("duration", 0))
     grand_total = sum(mode_totals.values())
 
     # Build mode breakdown rows
@@ -198,16 +397,33 @@ def _render_dashboard(sessions: list) -> str:
             <div class="week-time">{fmt(b['total']) if b['total'] else ''}</div>
         </div>"""
 
-    # Recent sessions list
-    recent = sorted(sessions, key=lambda s: s["end_time"], reverse=True)[:20]
+    # Build month bars (last 6 months)
+    month_html = ""
+    for b in month_bars:
+        h = int((b["total"] / max_month) * 140) if max_month else 0
+        is_current = b["key"] == month_prefix
+        month_html += f"""
+        <div class="week-day{' today' if is_current else ''}">
+            <div class="week-bar-wrap"><div class="week-bar" style="height:{h}px"></div></div>
+            <div class="week-label">{b['label']}</div>
+            <div class="week-time">{fmt(b['total']) if b['total'] else ''}</div>
+        </div>"""
+
+    # Recent sessions list (safe sort — date + end_time)
+    recent = sorted(
+        sessions,
+        key=lambda s: (s.get("date", ""), s.get("end_time", "")),
+        reverse=True,
+    )[:20]
     recent_rows = ""
     for s in recent:
+        dur = int(s.get("duration", 0))
         recent_rows += f"""
         <div class="recent-row">
-            <span class="recent-date">{s['date']}</span>
-            <span class="recent-mode">{s['mode']}</span>
-            <span class="recent-time">{s['start_time']} → {s['end_time']}</span>
-            <span class="recent-dur">{s.get('duration_formatted', fmt(s['duration']))}</span>
+            <span class="recent-date">{s.get('date', '?')}</span>
+            <span class="recent-mode">{s.get('mode', '?')}</span>
+            <span class="recent-time">{s.get('start_time', '?')} → {s.get('end_time', '?')}</span>
+            <span class="recent-dur">{s.get('duration_formatted', fmt(dur))}</span>
         </div>"""
 
     return f"""<!DOCTYPE html>
@@ -222,7 +438,7 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
 .container{{max-width:900px;margin:0 auto}}
 h1{{font-size:28px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:10px}}
 .subtitle{{color:#8b949e;font-size:14px;margin-bottom:32px}}
-.stats-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px}}
+.stats-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}}
 .stat-card{{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:20px;text-align:center}}
 .stat-card .label{{color:#8b949e;font-size:12px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}}
 .stat-card .value{{font-size:32px;font-weight:700;color:#f0f6fc}}
@@ -250,7 +466,7 @@ h1{{font-size:28px;font-weight:700;margin-bottom:8px;display:flex;align-items:ce
 .recent-mode{{width:120px;flex-shrink:0}}
 .recent-time{{flex:1;color:#8b949e}}
 .recent-dur{{width:70px;text-align:right;font-weight:600;color:#f0f6fc}}
-@media(max-width:600px){{.stats-grid{{grid-template-columns:1fr}}}}
+@media(max-width:600px){{.stats-grid{{grid-template-columns:1fr 1fr}}}}
 </style>
 </head>
 <body>
@@ -265,21 +481,33 @@ h1{{font-size:28px;font-weight:700;margin-bottom:8px;display:flex;align-items:ce
             <div class="sub">{today_count} session{'s' if today_count != 1 else ''}</div>
         </div>
         <div class="stat-card">
-            <div class="label">Total Focus</div>
-            <div class="value">{fmt(grand_total)}</div>
-            <div class="sub">all time</div>
+            <div class="label">This Week</div>
+            <div class="value">{fmt(week_total)}</div>
+            <div class="sub">{week_count} session{'s' if week_count != 1 else ''}</div>
         </div>
         <div class="stat-card">
-            <div class="label">Total Sessions</div>
-            <div class="value">{len(sessions)}</div>
-            <div class="sub">completed</div>
+            <div class="label">This Month</div>
+            <div class="value">{fmt(month_total)}</div>
+            <div class="sub">{month_count} session{'s' if month_count != 1 else ''}</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">All Time</div>
+            <div class="value">{fmt(grand_total)}</div>
+            <div class="sub">{len(sessions)} sessions</div>
         </div>
     </div>
 
     <div class="card">
-        <h2>📅 This Week</h2>
+        <h2>📅 Last 7 Days</h2>
         <div class="week-chart">
             {week_html}
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🗓 Last 6 Months</h2>
+        <div class="week-chart">
+            {month_html}
         </div>
     </div>
 

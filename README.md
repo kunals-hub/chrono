@@ -114,15 +114,30 @@ Still zero Dock presence.
 Click **📊 Dashboard** in the menu or open `http://localhost:8765`.
 
 Shows:
-- Today's total focus time & session count
-- All-time stats
+- Today / This Week / This Month / All-Time totals + session counts
 - Last 7 days bar chart
+- Last 6 months bar chart
 - Breakdown by mode (25/50/Custom/∞)
-- Recent sessions list
+- Recent sessions list (last 20, from recent + archive)
+
+Data loads fresh on every page view (recent + all archived months), so totals never go stale.
 
 ## Data
 
-Sessions are stored in `data/sessions.json`:
+Tiered local storage (Forest-style — detailed when fresh, rolled up when old, never deleted).
+All data lives in `~/Library/Application Support/Chrono/` — **outside** the `.app` bundle, so rebuilding the app never wipes it:
+
+```
+~/Library/Application Support/Chrono/
+├── sessions.json      # raw detail, last ~90 days (hot file)
+├── summaries.json     # daily / weekly / monthly rollups, all-time (auto-rebuilt on every save)
+└── archive/
+    └── YYYY-MM.json   # raw detail for older months, one file per month
+```
+
+- Every **⏹ Stop Session** / timer-finish / **Quit** appends to `sessions.json`, then maintenance runs automatically.
+- Sessions older than 90 days are moved into `archive/YYYY-MM.json` — old daily detail compacts into monthly files, but totals stay permanent via `summaries.json` + archive.
+- A single session looks like this:
 
 ```json
 {
@@ -143,8 +158,8 @@ chrono/
 ├── setup.py             # py2app build config
 ├── alias.sh             # Shell shortcuts
 ├── com.user.chrono.plist  # LaunchAgents auto-start
-├── data/
-│   └── sessions.json    # Your focus data
+├── data/                # legacy fallback only (real data lives in
+│                         # ~/Library/Application Support/Chrono/)
 └── dist/
     └── Chrono.app       # Built app bundle
 ```
