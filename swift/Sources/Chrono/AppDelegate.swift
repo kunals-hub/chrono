@@ -14,6 +14,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var item50: NSMenuItem!
     private var itemInfinite: NSMenuItem!
     private var itemCustom: NSMenuItem!
+    /// Last title pushed to the status item. While paused the title never
+    /// changes, so skipping redundant sets avoids a CoreAnimation redraw +
+    /// XPC round-trip to MenuBarAgent every second (was ~1% idle CPU).
+    private var lastTitle: String?
 
     func applicationDidFinishLaunching(_ note: Notification) {
         // Background agent: no Dock icon, no cmd+tab. (LSUIElement=true in
@@ -70,14 +74,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateTitle() {
-        statusItem.button?.title = engine.title()
-        // Checkmark the active mode family.
+        // Checkmark the active mode family (cheap; menu is hidden, no display).
         switch engine.mode {
         case .pomodoro25: item25.state = .on; item50.state = .off; itemInfinite.state = .off; itemCustom.state = .off
         case .pomodoro50: item25.state = .off; item50.state = .on; itemInfinite.state = .off; itemCustom.state = .off
         case .infinite: item25.state = .off; item50.state = .off; itemInfinite.state = .on; itemCustom.state = .off
         case .custom: item25.state = .off; item50.state = .off; itemInfinite.state = .off; itemCustom.state = .on
         }
+        let t = engine.title()
+        guard t != lastTitle else { return }
+        lastTitle = t
+        statusItem.button?.title = t
     }
 
     // MARK: - Tick
