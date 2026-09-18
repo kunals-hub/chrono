@@ -107,7 +107,12 @@ cp com.user.chrono.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.user.chrono.plist
 ```
 
-Still zero Dock presence.
+Still zero Dock presence. The agent only opens Chrono at login — it won't
+relaunch it afterwards, so **Quit** actually quits (`KeepAlive` is off).
+
+Note: the plist hardcodes the path to `dist/Chrono.app` — if you cloned
+the repo somewhere else, update that path inside `com.user.chrono.plist`
+before copying it over.
 
 ## Dashboard
 

@@ -12,7 +12,7 @@
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
-    <true/>
+    <false/>
     <key>StandardOutPath</key>
     <string>/tmp/chrono.log</string>
     <key>StandardErrorPath</key>
