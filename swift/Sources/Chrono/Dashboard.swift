@@ -341,7 +341,7 @@ enum Dashboard {
         .cal-head{margin-bottom:4px}
         .cal-head .month{font-size:10px;color:#8b949e;white-space:nowrap;overflow:hidden}
         .cal-grid .day{font-size:9px;color:#8b949e;white-space:nowrap}
-        .cell{aspect-ratio:1/1;width:100%;border-radius:2px;background:#161b22;border:1px solid #21262d}
+        .cell{aspect-ratio:1/1;width:100%;border-radius:2px;background:#21262d;border:1px solid #30363d}
         .legend .cell{width:11px;aspect-ratio:auto;height:11px}
         .cell.out{background:transparent;border-color:transparent}
         .tip{position:fixed;display:none;background:#30363d;border:1px solid #484f58;color:#f0f6fc;font-size:12px;padding:6px 10px;border-radius:6px;pointer-events:none;z-index:10;white-space:nowrap}
