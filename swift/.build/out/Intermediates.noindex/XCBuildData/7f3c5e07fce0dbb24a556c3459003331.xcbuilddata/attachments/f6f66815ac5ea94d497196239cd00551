@@ -1,0 +1,46 @@
+{
+  "" : {
+    "const-values" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Chrono-primary.swiftconstvalues",
+    "dependencies" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Chrono-primary.d",
+    "diagnostics" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Chrono-primary.dia",
+    "emit-module-dependencies" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Chrono-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Chrono-primary-emit-module.dia",
+    "pch" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Chrono-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Chrono-primary.swiftdeps"
+  },
+  "/Users/kunalchaudhary/hermes-workspace/chrono/swift/Sources/Chrono/AppDelegate.swift" : {
+    "index-unit-output-path" : "/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/AppDelegate.o",
+    "llvm-bc" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/AppDelegate.bc",
+    "object" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/AppDelegate.o"
+  },
+  "/Users/kunalchaudhary/hermes-workspace/chrono/swift/Sources/Chrono/Dashboard.swift" : {
+    "index-unit-output-path" : "/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Dashboard.o",
+    "llvm-bc" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Dashboard.bc",
+    "object" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Dashboard.o"
+  },
+  "/Users/kunalchaudhary/hermes-workspace/chrono/swift/Sources/Chrono/Notify.swift" : {
+    "index-unit-output-path" : "/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Notify.o",
+    "llvm-bc" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Notify.bc",
+    "object" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Notify.o"
+  },
+  "/Users/kunalchaudhary/hermes-workspace/chrono/swift/Sources/Chrono/SingleInstance.swift" : {
+    "index-unit-output-path" : "/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/SingleInstance.o",
+    "llvm-bc" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/SingleInstance.bc",
+    "object" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/SingleInstance.o"
+  },
+  "/Users/kunalchaudhary/hermes-workspace/chrono/swift/Sources/Chrono/Store.swift" : {
+    "index-unit-output-path" : "/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Store.o",
+    "llvm-bc" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Store.bc",
+    "object" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/Store.o"
+  },
+  "/Users/kunalchaudhary/hermes-workspace/chrono/swift/Sources/Chrono/TimerEngine.swift" : {
+    "index-unit-output-path" : "/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/TimerEngine.o",
+    "llvm-bc" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/TimerEngine.bc",
+    "object" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/TimerEngine.o"
+  },
+  "/Users/kunalchaudhary/hermes-workspace/chrono/swift/Sources/Chrono/main.swift" : {
+    "index-unit-output-path" : "/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/main.o",
+    "llvm-bc" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/main.bc",
+    "object" : "/Users/kunalchaudhary/hermes-workspace/chrono/swift/.build/out/Intermediates.noindex/Chrono.build/Release/Chrono-p.build/Objects-normal/arm64/main.o"
+  }
+}

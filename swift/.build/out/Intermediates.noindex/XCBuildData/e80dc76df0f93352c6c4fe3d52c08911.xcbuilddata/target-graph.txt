@@ -1,0 +1,4 @@
+Target dependency graph (2 targets)
+Target 'AllExcludingTests' in project 'Aggregate'
+➜ Explicit dependency on target 'Chrono-product' in project 'Chrono'
+Target 'Chrono-product' in project 'Chrono' (no dependencies)
